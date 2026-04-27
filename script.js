@@ -1,4 +1,26 @@
 /* ═══════════════════════════════════════════════════
+   THEME TOGGLE — dark / light with localStorage
+═══════════════════════════════════════════════════ */
+(function initTheme() {
+  const root   = document.documentElement;
+  const btn    = document.getElementById('themeToggle');
+  const stored = localStorage.getItem('theme');
+
+  /* Apply saved preference or default to dark */
+  const theme = stored || 'dark';
+  root.setAttribute('data-theme', theme);
+
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    const current = root.getAttribute('data-theme');
+    const next    = current === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  });
+})();
+
+/* ═══════════════════════════════════════════════════
    TYPED EFFECT
 ═══════════════════════════════════════════════════ */
 (function initTyped() {
@@ -50,14 +72,11 @@
   const sections = document.querySelectorAll('section[id]');
 
   function onScroll() {
-    /* sticky bg */
     navbar.classList.toggle('scrolled', window.scrollY > 20);
 
-    /* back-to-top */
     const btt = document.getElementById('backToTop');
     if (btt) btt.classList.toggle('visible', window.scrollY > 400);
 
-    /* active nav link */
     let current = '';
     sections.forEach(sec => {
       if (window.scrollY >= sec.offsetTop - 120) current = sec.id;
@@ -85,7 +104,6 @@
     btn.setAttribute('aria-expanded', String(open));
   });
 
-  /* close on link click */
   links.querySelectorAll('.nav-link').forEach(a => {
     a.addEventListener('click', () => {
       links.classList.remove('open');
@@ -94,7 +112,6 @@
     });
   });
 
-  /* close on outside click */
   document.addEventListener('click', e => {
     if (!btn.contains(e.target) && !links.contains(e.target)) {
       links.classList.remove('open');
@@ -127,6 +144,24 @@
 })();
 
 /* ═══════════════════════════════════════════════════
+   PROJECT CARDS — Read More toggle
+═══════════════════════════════════════════════════ */
+(function initReadMore() {
+  document.querySelectorAll('.read-more-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card   = btn.closest('.project-card');
+      const expand = card ? card.querySelector('.project-expand') : null;
+      if (!expand) return;
+
+      const isOpen = expand.classList.toggle('open');
+      expand.setAttribute('aria-hidden', String(!isOpen));
+      btn.setAttribute('aria-expanded', String(isOpen));
+      btn.childNodes[0].textContent = isOpen ? 'Read Less ' : 'Read More ';
+    });
+  });
+})();
+
+/* ═══════════════════════════════════════════════════
    BACK TO TOP
 ═══════════════════════════════════════════════════ */
 (function initBackToTop() {
@@ -149,46 +184,52 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
 });
 
 /* ═══════════════════════════════════════════════════
-   CONTACT FORM — Formspree feedback
+   CONTACT FORM — Formspree AJAX with feedback
 ═══════════════════════════════════════════════════ */
 (function initContactForm() {
-  const form = document.querySelector('.contact-form');
-  if (!form) return;
+  const form     = document.getElementById('contactForm');
+  const feedback = document.getElementById('formFeedback');
+  if (!form || !feedback) return;
 
   form.addEventListener('submit', async e => {
-    const btn = form.querySelector('button[type="submit"]');
+    e.preventDefault();
+
+    const btn  = document.getElementById('formSubmitBtn');
     const orig = btn.innerHTML;
 
-    /* skip if Formspree ID not yet configured */
+    /* Warn if Formspree ID not configured */
     if (form.action.includes('YOUR_FORM_ID')) {
-      e.preventDefault();
-      btn.innerHTML = '✓ Configure Formspree ID first';
-      setTimeout(() => { btn.innerHTML = orig; }, 3000);
+      feedback.className = 'form-feedback error';
+      feedback.textContent = '⚠ Configure your Formspree form ID first.';
       return;
     }
 
     btn.disabled = true;
     btn.innerHTML = '<span style="opacity:.6">Sending…</span>';
+    feedback.className = 'form-feedback';
+    feedback.textContent = '';
 
-    const data = new FormData(form);
     try {
       const res = await fetch(form.action, {
-        method: 'POST',
-        body: data,
+        method:  'POST',
+        body:    new FormData(form),
         headers: { Accept: 'application/json' },
       });
+
       if (res.ok) {
-        btn.innerHTML = '✓ Message sent!';
+        feedback.className = 'form-feedback success';
+        feedback.textContent = '✓ Message sent! I\'ll reply within 24 hours.';
         form.reset();
-        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 4000);
+        btn.innerHTML = orig;
+        btn.disabled  = false;
       } else {
         throw new Error();
       }
     } catch {
-      btn.innerHTML = '✗ Error — try again';
-      btn.disabled = false;
-      setTimeout(() => { btn.innerHTML = orig; }, 3000);
+      feedback.className = 'form-feedback error';
+      feedback.textContent = '✗ Something went wrong. Please email me directly.';
+      btn.innerHTML = orig;
+      btn.disabled  = false;
     }
-    e.preventDefault();
   });
 })();
